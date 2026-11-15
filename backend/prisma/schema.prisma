@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SkillCategory {
+  PROGRAMMING
+  DATA_AND_ANALYTICS
+  AI_AND_MACHINE_LEARNING
+  WEB_DEVELOPMENT
+  CLOUD_AND_DEVOPS
+  CYBERSECURITY
+  BUSINESS_AND_SOFT_SKILLS
+}
+
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id           String       @id @default(uuid())
+  name         String
+  email        String       @unique
+  passwordHash String
+  role         Role         @default(USER)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  predictions  Prediction[]
+  datasets     Dataset[]
+
+  @@index([email])
+}
+
+model Dataset {
+  id           String            @id @default(uuid())
+  name         String
+  description  String?
+  source       String            @default("UPLOAD")
+  recordCount  Int               @default(0)
+  status       String            @default("READY")
+  isDemo       Boolean           @default(false)
+  uploadedBy   String?
+  uploader     User?             @relation(fields: [uploadedBy], references: [id], onDelete: SetNull)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  jobPostings  JobPosting[]
+  evaluations  ModelEvaluation[]
+  imports      DatasetImport[]
+
+  @@index([status])
+  @@index([isDemo])
+}
+
+model JobPosting {
+  id             String     @id @default(uuid())
+  datasetId      String
+  dataset        Dataset    @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  jobTitle       String
+  jobDescription String?
+  company        String
+  location       String
+  industry       String
+  experience     String?    // e.g., "Entry", "Mid-Level", "Senior", "Lead"
+  education      String?    // e.g., "Bachelor's", "Master's", "PhD", "Self-Taught"
+  salary         String?
+  postingDate    DateTime
+  createdAt      DateTime   @default(now())
+  jobSkills      JobSkill[]
+
+  @@index([jobTitle])
+  @@index([location])
+  @@index([industry])
+  @@index([postingDate])
+  @@index([datasetId])
+}
+
+model Skill {
+  id        String        @id @default(uuid())
+  name      String        @unique
+  category  SkillCategory
+  jobSkills JobSkill[]
+
+  @@index([category])
+  @@index([name])
+}
+
+model JobSkill {
+  id           String     @id @default(uuid())
+  jobPostingId String
+  skillId      String
+  jobPosting   JobPosting @relation(fields: [jobPostingId], references: [id], onDelete: Cascade)
+  skill        Skill      @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([jobPostingId, skillId])
+  @@index([jobPostingId])
+  @@index([skillId])
+}
+
+model Prediction {
+  id                String   @id @default(uuid())
+  userId            String?
+  user              User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  jobRole           String
+  location          String   @default("All")
+  horizon           Int      // 3, 6, 12 months
+  modelName         String
+  predictedDemand   Float
+  predictedGrowth   Float
+  predictionResults Json     // Contains monthly breakdown, confidence bounds, historical comparison
+  createdAt         DateTime @default(now())
+
+  @@index([userId])
+  @@index([jobRole])
+  @@index([modelName])
+}
+
+model ModelEvaluation {
+  id           String   @id @default(uuid())
+  modelName    String
+  mae          Float
+  mse          Float
+  rmse         Float
+  mape         Float
+  r2           Float
+  trainingDate DateTime @default(now())
+  datasetId    String?
+  dataset      Dataset? @relation(fields: [datasetId], references: [id], onDelete: SetNull)
+
+  @@index([modelName])
+}
+
+model DatasetImport {
+  id             String       @id @default(uuid())
+  datasetId      String
+  dataset        Dataset      @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  status         ImportStatus @default(PENDING)
+  totalRows      Int          @default(0)
+  successfulRows Int          @default(0)
+  failedRows     Int          @default(0)
+  errorReport    Json?
+  createdAt      DateTime     @default(now())
+
+  @@index([datasetId])
+  @@index([status])
+}
+

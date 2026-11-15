@@ -1,0 +1,13 @@
+{
+  "name": "jobpulse",
+  "version": "1.0.0",
+  "description": "JobPulse — Job Market Intelligence Master Orchestrator",
+  "main": "start.js",
+  "scripts": {
+    "start": "node start.js",
+    "dev": "node start.js",
+    "test": "cd backend && npm test",
+    "build": "cd frontend && npm run build"
+  }
+}
+
